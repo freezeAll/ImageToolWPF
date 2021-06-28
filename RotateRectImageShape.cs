@@ -62,15 +62,10 @@ namespace ImageToolWPF
             }
         }
 
-        public float Angle {
-            set
-            {
-                _rotatedRect.Angle = value;
-            }
-            get
-            {
-                return _rotatedRect.Angle;
-            }
+        public float Angle
+        {
+            set;
+            get;
         }
         private RotatedRect _rotatedRect;
         private System.Windows.Point _mouseStart;
@@ -415,7 +410,7 @@ namespace ImageToolWPF
                     break;
             }
         }
-
+        
         internal override void HoverMove(Point mouse, Rect imgRect, Size itemSize)
         {
             base.HoverMove(mouse, imgRect, itemSize);

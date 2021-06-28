@@ -20,6 +20,7 @@ namespace ImageToolWPF
         public ImageToolDisplayer()
         {
             InitializeComponent();
+            _paintData = new ImageToolPaintData();
             _sourceImage = null;
             Shapes = new List<ImageShape>();
             
@@ -43,10 +44,41 @@ namespace ImageToolWPF
             InvalidateVisual();
         }
         private BitmapImage _sourceImage;
+
+        public BitmapImage BitmapShowImage
+        {
+            set
+            {
+                _sourceImage = value;
+                ResetScale();
+                InvalidateVisual();
+            }
+        }
+        
+        public Mat CvMatShowImage
+        {
+            set
+            {
+                SetShowImage(value);
+            }
+        }
         private Rect _displayArea;
         private System.Windows.Point _startPos;
         private List<ImageShape> Shapes;
-        public void ShowImage(Mat matImg)
+
+        private List<ImageShape> ImageShapes
+        {
+            set
+            {
+                foreach(var shape in value)
+                {
+                    shape._parentDisplayer = this;
+                }
+                Shapes = value;
+            }
+        }
+
+        private void SetShowImage(Mat matImg)
         {
             var bm = new BitmapImage();
             bm.BeginInit();
@@ -178,6 +210,36 @@ namespace ImageToolWPF
                 }
             }
         }
+
+        public void PushPaintObject(PaintObject obj)
+        {
+            _paintData.PaintObjects.Add(obj);
+            InvalidateVisual();
+        }
+        public void ClearPaintObject()
+        {
+            _paintData.PaintObjects.Clear();
+            InvalidateVisual();
+        }
+        private ImageToolPaintData _paintData;
+
+        public void DrawMat(ref Mat paintMat)
+        {
+            _paintData.DrawMat(ref paintMat);
+        }
+        public ImageToolPaintData PaintData
+        {
+            get
+            {
+                return _paintData;
+            }
+            set
+            {
+                _paintData = value;
+                InvalidateVisual();
+            }
+        }
+
         public void ResetImageScale()
         {
             ResetScale();
@@ -193,14 +255,20 @@ namespace ImageToolWPF
             Rect myRect = new Rect(0, 0, masterCanva.Width, masterCanva.Height);
             drawingContext.DrawRectangle(mySolidColorBrush, myPen, myRect);
             //drawingContext.DrawLine();
-            if (_sourceImage != null)
+            if (_sourceImage == null)
             {
-                drawingContext.DrawImage(_sourceImage,_displayArea);
+                return;
             }
-
+            drawingContext.DrawImage(_sourceImage,_displayArea);
+            var itemSize = new System.Windows.Size(_sourceImage.Width, _sourceImage.Height);
             foreach (var shape in Shapes)
             {
-                shape.Paint(drawingContext,_displayArea,new System.Windows.Size(_sourceImage.Width,_sourceImage.Height ));
+                shape.Paint(drawingContext,_displayArea,itemSize);
+            }
+
+            foreach (var obj in _paintData.PaintObjects)
+            {
+                obj.Paint(drawingContext,_displayArea,itemSize);
             }
         }
 
@@ -236,7 +304,5 @@ namespace ImageToolWPF
             Clip = new RectangleGeometry(new Rect(0, 0, masterCanva.Width, masterCanva.Height));
             InvalidateVisual();
         }
-        
-
     }
 }
