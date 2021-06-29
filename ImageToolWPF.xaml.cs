@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.DirectoryServices.ActiveDirectory;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -11,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using OpenCvSharp;
+using Image = System.Drawing.Image;
 using Rect = System.Windows.Rect;
 
 namespace ImageToolWPF
@@ -45,29 +47,58 @@ namespace ImageToolWPF
         }
         private BitmapImage _sourceImage;
 
-        public BitmapImage BitmapShowImage
+        public static readonly DependencyProperty CvMatShowImageProperty = DependencyProperty.Register("CvMatShowImage", typeof(Mat), typeof(ImageToolDisplayer),new PropertyMetadata(null, CvMatShowImagePropertyChangedCallback, null));
+
+        private static void CvMatShowImagePropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            set
-            {
-                _sourceImage = value;
-                ResetScale();
-                InvalidateVisual();
-            }
+            var obj = d as ImageToolDisplayer;
+            if(obj != null)
+                obj.CvMatShowImage = e.NewValue as Mat ;
         }
-        
+
         public Mat CvMatShowImage
         {
+            get
+            {
+                var val = GetValue(CvMatShowImageProperty);
+                return val as Mat;
+            }
             set
             {
+                SetValue(CvMatShowImageProperty,value);
                 SetShowImage(value);
             }
         }
         private Rect _displayArea;
         private System.Windows.Point _startPos;
+        
+        public static readonly DependencyProperty ImageShapesProperty = DependencyProperty.Register("ImageShapes", typeof(List<ImageShape>), typeof(ImageToolDisplayer),new PropertyMetadata(null, ImageShapesPropertyChangedCallback, null));
+
+        private static void ImageShapesPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var obj = d as ImageToolDisplayer;
+            if (obj != null)
+            {
+                obj.Shapes.Clear();
+                foreach (var newVal in e.NewValue as List<ImageShape>)
+                {
+                    newVal._parentDisplayer = obj;
+                    obj.Shapes.Add(newVal);
+                }
+                obj.InvalidateVisual();
+            }
+        }
+    
+        
+
         private List<ImageShape> Shapes;
 
-        private List<ImageShape> ImageShapes
+        public List<ImageShape> ImageShapes
         {
+            get
+            {
+                return GetValue(ImageShapesProperty) as List<ImageShape>;
+            }
             set
             {
                 foreach(var shape in value)
@@ -75,9 +106,40 @@ namespace ImageToolWPF
                     shape._parentDisplayer = this;
                 }
                 Shapes = value;
+                SetValue(ImageShapesProperty,value);
+                InvalidateVisual();
             }
         }
 
+        public static readonly DependencyProperty PaintObjectsProperty = DependencyProperty.Register("PaintObject", typeof(List<PaintObject>), typeof(ImageToolDisplayer),new PropertyMetadata(null, PaintObjectsPropertyChangedCallback, null));
+
+        private static void PaintObjectsPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var obj = d as ImageToolDisplayer;
+            if (obj != null)
+            {
+                obj.PaintObjects.Clear();
+                foreach (var newVal in e.NewValue as List<PaintObject>)
+                {
+                    obj.PaintObjects.Add(newVal);
+                }
+                obj.InvalidateVisual();
+            }
+        }
+
+        public List<PaintObject> PaintObjects
+        {
+            get
+            {
+                return _paintData.PaintObjects;
+            }
+            set
+            {
+                SetValue(PaintObjectsProperty,value);
+                _paintData.PaintObjects = value;
+                InvalidateVisual();
+            }
+        }
         private void SetShowImage(Mat matImg)
         {
             var bm = new BitmapImage();
@@ -95,6 +157,7 @@ namespace ImageToolWPF
             ResetScale();
             InvalidateVisual();
         }
+        
 
         private ImageShape grabedShape;
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -295,6 +358,7 @@ namespace ImageToolWPF
         internal void ImageShapeDataChangedCallBack(ImageShape imageShape)
         {
             ImageShapeDataChangedEventArgs args = new ImageShapeDataChangedEventArgs(ImageShapeDataChangedEvent, this,imageShape);
+            SetValue(ImageShapesProperty,ImageShapes);
             this.RaiseEvent(args);
         }
         private void ImageToolDisplayer_OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -302,6 +366,7 @@ namespace ImageToolWPF
             masterCanva.Width = e.NewSize.Width;
             masterCanva.Height = e.NewSize.Height;
             Clip = new RectangleGeometry(new Rect(0, 0, masterCanva.Width, masterCanva.Height));
+            ResetScale();
             InvalidateVisual();
         }
     }

@@ -12,6 +12,7 @@ using Size = System.Windows.Size;
 
 namespace ImageToolWPF
 {
+    [Serializable]
     public class RotateRectImageShape : ImageShape
     {
         public RotateRectImageShape()
