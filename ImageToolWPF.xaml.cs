@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.DirectoryServices.ActiveDirectory;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -14,6 +15,7 @@ using System.Windows.Shapes;
 using OpenCvSharp;
 using Image = System.Drawing.Image;
 using Rect = System.Windows.Rect;
+using Size = OpenCvSharp.Size;
 
 namespace ImageToolWPF
 {
@@ -22,10 +24,14 @@ namespace ImageToolWPF
         public ImageToolDisplayer()
         {
             InitializeComponent();
+
+            //masterCanva = new Canvas();
+            SizeChanged += new SizeChangedEventHandler(ImageToolDisplayer_OnSizeChanged);
+
             _paintData = new ImageToolPaintData();
             _sourceImage = null;
-            Shapes = new List<ImageShape>();
-            
+            ImageShapes = new ObservableCollection<ImageShape>();
+
             Clip = new RectangleGeometry(new Rect(0, 0, masterCanva.Width, masterCanva.Height));
             _displayArea = new Rect();
 
@@ -39,21 +45,39 @@ namespace ImageToolWPF
             masterCanva.SetBinding(Canvas.HeightProperty, hbinding);
         }
 
+        //private Canvas masterCanva;
+
         public void PushShape(ImageShape shape)
         {
             shape._parentDisplayer = this;
-            Shapes.Add(shape);
+            ImageShapes.Add(shape);
             InvalidateVisual();
         }
+
         private BitmapImage _sourceImage;
 
-        public static readonly DependencyProperty CvMatShowImageProperty = DependencyProperty.Register("CvMatShowImage", typeof(Mat), typeof(ImageToolDisplayer),new PropertyMetadata(null, CvMatShowImagePropertyChangedCallback, null));
+        public static readonly DependencyProperty CvMatShowImageProperty = DependencyProperty.Register("CvMatShowImage",
+            typeof(Mat), typeof(ImageToolDisplayer),
+            new PropertyMetadata(null, CvMatShowImagePropertyChangedCallback, null));
 
-        private static void CvMatShowImagePropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        public static readonly DependencyProperty PaintDataProperty = DependencyProperty.Register("PaintData",
+            typeof(ImageToolPaintData), typeof(ImageToolDisplayer),
+            new PropertyMetadata(null, PaintDataPropertyChangedCallback, null));
+
+        private static void CvMatShowImagePropertyChangedCallback(DependencyObject d,
+            DependencyPropertyChangedEventArgs e)
         {
             var obj = d as ImageToolDisplayer;
-            if(obj != null)
-                obj.CvMatShowImage = e.NewValue as Mat ;
+            if (obj != null)
+                obj.CvMatShowImage = e.NewValue as Mat;
+        }
+
+        private static void PaintDataPropertyChangedCallback(DependencyObject d,
+            DependencyPropertyChangedEventArgs e)
+        {
+            var obj = d as ImageToolDisplayer;
+            if (obj != null)
+                obj.PaintData = e.NewValue as ImageToolPaintData;
         }
 
         public Mat CvMatShowImage
@@ -65,55 +89,86 @@ namespace ImageToolWPF
             }
             set
             {
-                SetValue(CvMatShowImageProperty,value);
+                SetValue(CvMatShowImageProperty, value);
                 SetShowImage(value);
             }
         }
+
         private Rect _displayArea;
         private System.Windows.Point _startPos;
-        
-        public static readonly DependencyProperty ImageShapesProperty = DependencyProperty.Register("ImageShapes", typeof(List<ImageShape>), typeof(ImageToolDisplayer),new PropertyMetadata(null, ImageShapesPropertyChangedCallback, null));
+
+        public static readonly DependencyProperty ImageShapesProperty = DependencyProperty.Register("ImageShapes",
+            typeof(ObservableCollection<ImageShape>), typeof(ImageToolDisplayer),
+            new PropertyMetadata(new ObservableCollection<ImageShape>(), ImageShapesPropertyChangedCallback, null));
 
         private static void ImageShapesPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var obj = d as ImageToolDisplayer;
             if (obj != null)
             {
+                /*
                 obj.Shapes.Clear();
-                foreach (var newVal in e.NewValue as List<ImageShape>)
+                if (e.NewValue == null)
+                {
+                    obj.InvalidateVisual();
+                    return;
+                }
+
+                foreach (var newVal in e.NewValue as ObservableCollection<ImageShape>)
                 {
                     newVal._parentDisplayer = obj;
                     obj.Shapes.Add(newVal);
                 }
+*/
+                var old = e.OldValue as ObservableCollection<ImageShape>;
+                if (old != null)
+                {
+                    old.CollectionChanged -= ImageShapesProperty_CollectionChanged;
+                }
+                if(e.NewValue != null)
+                {
+                    (e.NewValue as ObservableCollection<ImageShape>).CollectionChanged +=
+                    ImageShapesProperty_CollectionChanged;
+                    
+                }
+                
                 obj.InvalidateVisual();
             }
         }
-    
+        
+        static void ImageShapesProperty_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            var action = e.Action;
+        }
         
 
-        private List<ImageShape> Shapes;
+        //private ObservableCollection<ImageShape> Shapes;
 
-        public List<ImageShape> ImageShapes
+        public ObservableCollection<ImageShape> ImageShapes
         {
             get
             {
-                return GetValue(ImageShapesProperty) as List<ImageShape>;
+                return GetValue(ImageShapesProperty) as ObservableCollection<ImageShape>;
             }
             set
             {
-                foreach(var shape in value)
+                foreach (var shape in value)
                 {
                     shape._parentDisplayer = this;
                 }
-                Shapes = value;
-                SetValue(ImageShapesProperty,value);
+
+                //Shapes = value;
+                SetValue(ImageShapesProperty, value);
                 InvalidateVisual();
             }
         }
 
-        public static readonly DependencyProperty PaintObjectsProperty = DependencyProperty.Register("PaintObject", typeof(List<PaintObject>), typeof(ImageToolDisplayer),new PropertyMetadata(null, PaintObjectsPropertyChangedCallback, null));
+        public static readonly DependencyProperty PaintObjectsProperty = DependencyProperty.Register("PaintObject",
+            typeof(List<PaintObject>), typeof(ImageToolDisplayer),
+            new PropertyMetadata(null, PaintObjectsPropertyChangedCallback, null));
 
-        private static void PaintObjectsPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void PaintObjectsPropertyChangedCallback(DependencyObject d,
+            DependencyPropertyChangedEventArgs e)
         {
             var obj = d as ImageToolDisplayer;
             if (obj != null)
@@ -123,32 +178,45 @@ namespace ImageToolWPF
                 {
                     obj.PaintObjects.Add(newVal);
                 }
+
                 obj.InvalidateVisual();
             }
         }
 
         public List<PaintObject> PaintObjects
         {
-            get
-            {
-                return _paintData.PaintObjects;
-            }
+            get { return _paintData.PaintObjects; }
             set
             {
-                SetValue(PaintObjectsProperty,value);
+                SetValue(PaintObjectsProperty, value);
                 _paintData.PaintObjects = value;
                 InvalidateVisual();
             }
         }
+
         private void SetShowImage(Mat matImg)
         {
-            var bm = new BitmapImage();
-            bm.BeginInit();
-            bm.StreamSource = new MemoryStream(matImg.ToBytes());
-            bm.EndInit();
-            _sourceImage = bm;
-            ResetScale();
-            InvalidateVisual();
+
+            if (matImg == null || matImg.Empty())
+            {
+                _sourceImage = null;
+                ResetScale();
+                InvalidateVisual();
+            }
+            else
+            {
+                var bm = new BitmapImage();
+                bm.BeginInit();
+                bm.StreamSource = new MemoryStream(matImg.ToBytes(".bmp"));
+                bm.EndInit();
+                _sourceImage = bm;
+                if(_displayArea.Width < 5 || _displayArea.Height < 5)
+                {
+                    ResetScale();
+                }
+                InvalidateVisual();
+            }
+
         }
 
         protected override void OnMouseDoubleClick(MouseButtonEventArgs e)
@@ -157,9 +225,10 @@ namespace ImageToolWPF
             ResetScale();
             InvalidateVisual();
         }
-        
+
 
         private ImageShape grabedShape;
+
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
         {
             base.OnMouseLeftButtonDown(e);
@@ -167,10 +236,11 @@ namespace ImageToolWPF
             {
                 return;
             }
+
             var pos = e.GetPosition(masterCanva);
             _startPos = pos;
             var itemSize = new System.Windows.Size(_sourceImage.Width, _sourceImage.Height);
-            foreach (var shape in Shapes)
+            foreach (var shape in ImageShapes)
             {
                 if (shape.UnderMouse(pos, _displayArea, itemSize))
                 {
@@ -179,11 +249,13 @@ namespace ImageToolWPF
                 }
             }
         }
+
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
         {
             base.OnMouseLeftButtonDown(e);
             grabedShape = null;
         }
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
@@ -191,16 +263,18 @@ namespace ImageToolWPF
             {
                 return;
             }
+
             var pos = e.GetPosition(masterCanva);
             var itemSize = new System.Windows.Size(_sourceImage.Width, _sourceImage.Height);
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 if (grabedShape != null)
                 {
-                    grabedShape.MouseMove(pos,_displayArea,itemSize);
+                    grabedShape.MouseMove(pos, _displayArea, itemSize);
                     InvalidateVisual();
                     return;
                 }
+
                 var vec = pos - _startPos;
                 _displayArea.X += vec.X;
                 _displayArea.Y += vec.Y;
@@ -209,10 +283,12 @@ namespace ImageToolWPF
             }
             else
             {
-                foreach (var shape in Shapes)
+                foreach (var shape in ImageShapes)
                 {
-                    shape.HoverMove(pos,_displayArea,new System.Windows.Size(_sourceImage.Width,_sourceImage.Height));
+                    shape.HoverMove(pos, _displayArea,
+                        new System.Windows.Size(_sourceImage.Width, _sourceImage.Height));
                 }
+
                 InvalidateVisual();
             }
         }
@@ -221,7 +297,7 @@ namespace ImageToolWPF
         {
             var itemWidth = masterCanva.Width;
             var itemHeight = masterCanva.Height;
-            
+
             double numDegrees = e.Delta;
             var pos = e.GetPosition(masterCanva);
             System.Windows.Point transP;
@@ -243,11 +319,12 @@ namespace ImageToolWPF
                 areaSize.Width *= 1.05;
                 areaSize.Height *= 1.05;
             }
+
             _displayArea = new Rect(transP.X, transP.Y, areaSize.Width, areaSize.Height);
             InvalidateVisual();
         }
 
-        private void ResetScale()
+        public void ResetScale()
         {
             if (_sourceImage == null)
                 return;
@@ -274,28 +351,55 @@ namespace ImageToolWPF
             }
         }
 
+        private void ResetScale(System.Windows.Size inputItemSize)
+        {
+            if (_sourceImage == null)
+                return;
+            var itemWidth = inputItemSize.Width;
+            var itemHeight = inputItemSize.Height;
+            if (itemWidth >= 1.0 && itemHeight >= 1.0)
+            {
+                if (_sourceImage.Width / _sourceImage.Height > itemWidth / itemHeight)
+                {
+                    double power = _sourceImage.Width / itemWidth;
+                    _displayArea.X = 0;
+                    _displayArea.Width = itemWidth;
+                    _displayArea.Height = _sourceImage.Height / power;
+                    _displayArea.Y = (itemHeight - _displayArea.Height) / 2.0;
+                }
+                else
+                {
+                    double power = _sourceImage.Height / itemHeight;
+                    _displayArea.Y = 0;
+                    _displayArea.Width = _sourceImage.Width / power;
+                    _displayArea.Height = itemHeight;
+                    _displayArea.X = (itemWidth - _displayArea.Width) / 2.0;
+                }
+            }
+        }
+
         public void PushPaintObject(PaintObject obj)
         {
             _paintData.PaintObjects.Add(obj);
             InvalidateVisual();
         }
+
         public void ClearPaintObject()
         {
             _paintData.PaintObjects.Clear();
             InvalidateVisual();
         }
+
         private ImageToolPaintData _paintData;
 
         public void DrawMat(ref Mat paintMat)
         {
             _paintData.DrawMat(ref paintMat);
         }
+
         public ImageToolPaintData PaintData
         {
-            get
-            {
-                return _paintData;
-            }
+            get { return _paintData; }
             set
             {
                 _paintData = value;
@@ -308,11 +412,12 @@ namespace ImageToolWPF
             ResetScale();
             InvalidateVisual();
         }
+
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-            
-            SolidColorBrush mySolidColorBrush  = new SolidColorBrush();
+
+            SolidColorBrush mySolidColorBrush = new SolidColorBrush();
             mySolidColorBrush.Color = Colors.LightGray;
             Pen myPen = new Pen(Brushes.LightGray, 0);
             Rect myRect = new Rect(0, 0, masterCanva.Width, masterCanva.Height);
@@ -322,52 +427,62 @@ namespace ImageToolWPF
             {
                 return;
             }
-            drawingContext.DrawImage(_sourceImage,_displayArea);
+
+            drawingContext.DrawImage(_sourceImage, _displayArea);
             var itemSize = new System.Windows.Size(_sourceImage.Width, _sourceImage.Height);
-            foreach (var shape in Shapes)
+            foreach (var shape in ImageShapes)
             {
-                shape.Paint(drawingContext,_displayArea,itemSize);
+                shape.Paint(drawingContext, _displayArea, itemSize);
             }
 
             foreach (var obj in _paintData.PaintObjects)
             {
-                obj.Paint(drawingContext,_displayArea,itemSize);
+                obj.Paint(drawingContext, _displayArea, itemSize);
             }
+
         }
 
         public class ImageShapeDataChangedEventArgs : RoutedEventArgs
         {
             public ImageShapeDataChangedEventArgs(RoutedEvent routedEvent, object source, ImageShape imageShape) :
-                base(routedEvent,source)
+                base(routedEvent, source)
             {
                 changedShape = imageShape;
             }
-            public ImageShape changedShape { get;}
+
+            public ImageShape changedShape { get; }
         }
+
         
-        public delegate void ImageShapeDataChangedHandler(object sender ,ImageShapeDataChangedEventArgs e);
-        
+        public delegate void ImageShapeDataChangedHandler(object sender, ImageShapeDataChangedEventArgs e);
+
         public static readonly RoutedEvent ImageShapeDataChangedEvent = EventManager.RegisterRoutedEvent(
-            "ImageShapeDataChanged", RoutingStrategy.Bubble, typeof(ImageShapeDataChangedHandler), typeof(ImageToolDisplayer));
+            "ImageShapeDataChanged", RoutingStrategy.Bubble, typeof(ImageShapeDataChangedHandler),
+            typeof(ImageToolDisplayer));
 
         public event ImageShapeDataChangedHandler ImageShapeDataChanged
         {
-            add { AddHandler(ImageShapeDataChangedEvent,value); }
-            remove { RemoveHandler(ImageShapeDataChangedEvent,value); }
+            add { AddHandler(ImageShapeDataChangedEvent, value); }
+            remove { RemoveHandler(ImageShapeDataChangedEvent, value); }
         }
+
         internal void ImageShapeDataChangedCallBack(ImageShape imageShape)
         {
-            ImageShapeDataChangedEventArgs args = new ImageShapeDataChangedEventArgs(ImageShapeDataChangedEvent, this,imageShape);
-            SetValue(ImageShapesProperty,ImageShapes);
+            ImageShapeDataChangedEventArgs args =
+                new ImageShapeDataChangedEventArgs(ImageShapeDataChangedEvent, this, imageShape);
+            SetValue(ImageShapesProperty, ImageShapes);
             this.RaiseEvent(args);
         }
+        
         private void ImageToolDisplayer_OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
             masterCanva.Width = e.NewSize.Width;
             masterCanva.Height = e.NewSize.Height;
             Clip = new RectangleGeometry(new Rect(0, 0, masterCanva.Width, masterCanva.Height));
-            ResetScale();
+            
+            ResetScale(e.NewSize);
             InvalidateVisual();
         }
+        
     }
 }

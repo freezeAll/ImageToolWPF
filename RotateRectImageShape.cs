@@ -17,59 +17,62 @@ namespace ImageToolWPF
     {
         public RotateRectImageShape()
         {
+            TypeName = "RotateRectImageShape";
+
+            Random random1 = new Random(DateTime.Now.Millisecond);
+            Random random2 = new Random(DateTime.Now.Millisecond);
+            Random random3 = new Random(DateTime.Now.Millisecond);
+            Random random4 = new Random(DateTime.Now.Millisecond);
+
             _grabThreshold = 5.0;
             DrawPen = new Pen();
             CtrlPen = new Pen();
             CtrlLinePen = new Pen();
-            DrawBrush = new SolidColorBrush(Color.FromArgb(100,32, 159, 223));
+            DrawBrush = new SolidColorBrush(Color.FromArgb(100, 32, 159, 223));
             DrawPen.Brush = new SolidColorBrush(Color.FromRgb(32, 159, 223));
-            
-            CtrlBrush = new SolidColorBrush(Color.FromArgb(100,9, 45, 64));
-            CtrlPen.Brush = new SolidColorBrush(Color.FromArgb(100,9, 45, 64));
-            
-            CtrlLineBrush = new SolidColorBrush(Color.FromArgb(100,9, 45, 64));
-            CtrlLinePen.Brush = new SolidColorBrush(Color.FromArgb(100,9, 45, 64));
+            CtrlBrush = new SolidColorBrush(Color.FromArgb(100, 9, 45, 64));
+            CtrlPen.Brush = new SolidColorBrush(Color.FromArgb(100, 9, 45, 64));
+            CtrlLineBrush = new SolidColorBrush(Color.FromArgb(100, 9, 45, 64));
+            CtrlLinePen.Brush = new SolidColorBrush(Color.FromArgb(100, 9, 45, 64));
             CtrlLinePen.Thickness = _grabThreshold;
+            _rotatedRect.Center.X = random1.Next(100,200);
+            _rotatedRect.Center.Y = random2.Next(100, 200);
+            _rotatedRect.Size.Width = random3.Next(50, 100);
+            _rotatedRect.Size.Height = random4.Next(50, 100);
         }
 
-        public Pen DrawPen { get; set; }
-        public Pen CtrlPen { get; set; }
-        public Brush CtrlLineBrush { get; set; }
-        public Pen CtrlLinePen { get; set; }
-        public Brush CtrlBrush { get; set; }
+        private Pen DrawPen { get; set; }
+        private Pen CtrlPen { get; set; }
+        private Brush CtrlLineBrush { get; set; }
+        private Pen CtrlLinePen { get; set; }
+        private Brush CtrlBrush { get; set; }
         private double _grabThreshold;
-        public Brush DrawBrush{ get; set; }
+        private Brush DrawBrush { get; set; }
+
         //private 
-        public Point Center {
-            set
-            {
-                _rotatedRect.Center = new Point2f(Convert.ToSingle( value.X),Convert.ToSingle( value.Y));
-            }
-            get
-            {
-                return new Point(_rotatedRect.Center.X, _rotatedRect.Center.Y);
-            }
-         }
+        public Point Center
+        {
+            set { _rotatedRect.Center = new Point2f(Convert.ToSingle(value.X), Convert.ToSingle(value.Y)); }
+            get { return new Point(_rotatedRect.Center.X, _rotatedRect.Center.Y); }
+        }
 
         public Size Size
         {
-            set
-            {
-                _rotatedRect.Size = new Size2f(Convert.ToSingle( value.Width),Convert.ToSingle( value.Height));
-            }
-            get
-            {
-                return new Size(_rotatedRect.Size.Width,_rotatedRect.Size.Height);
-            }
+            set { _rotatedRect.Size = new Size2f(Convert.ToSingle(value.Width), Convert.ToSingle(value.Height)); }
+            get { return new Size(_rotatedRect.Size.Width, _rotatedRect.Size.Height); }
         }
 
-        public float Angle
-        {
-            set;
-            get;
-        }
+        public float Angle { set; get; }
         private RotatedRect _rotatedRect;
         private System.Windows.Point _mouseStart;
+
+         public RotatedRect RawRotatedRect
+        {
+            get
+            {
+                return _rotatedRect;
+            }
+        }
         internal override bool UnderMouse(Point mouse, Rect imgRect, Size itemSize)
         {
             base.UnderMouse(mouse, imgRect, itemSize);
@@ -96,7 +99,6 @@ namespace ImageToolWPF
         internal override void Paint(DrawingContext painter, Rect imgRect, Size itemSize)
         {
             base.Paint(painter, imgRect, itemSize);
-
             var srcPoly = _rotatedRect.Points();
             var polySharpPnts = new List<System.Windows.Point>();
             foreach (var polyPnt in srcPoly)
@@ -104,25 +106,20 @@ namespace ImageToolWPF
                 polySharpPnts.Add(MapToPaint(new Point(polyPnt.X, polyPnt.Y), imgRect, itemSize));
             }
 
-            var center = ImageShape.MapToPaint(new Point(_rotatedRect.Center.X,
-                _rotatedRect.Center.Y), imgRect, itemSize);
-            var sz = ImageShape.MapToPaint(new Size(_rotatedRect.Size.Width,
-                _rotatedRect.Size.Height), imgRect, itemSize);
+            var center = ImageShape.MapToPaint(new Point(_rotatedRect.Center.X, _rotatedRect.Center.Y), imgRect,
+                itemSize);
+            var sz = ImageShape.MapToPaint(new Size(_rotatedRect.Size.Width, _rotatedRect.Size.Height), imgRect,
+                itemSize);
             var tltmp = new Point(center.X - sz.Width / 2.0, center.Y - sz.Height / 2.0);
-
             var drawRect = new System.Windows.Rect(tltmp, sz);
             var trans = new RotateTransform(_rotatedRect.Angle, center.X, center.Y);
-
             painter.PushTransform(trans);
             painter.DrawRectangle(DrawBrush, DrawPen, drawRect);
             painter.Pop();
-
-
             var d = _grabThreshold;
             switch (grabedType)
             {
                 case GrabedType.None:
-
                     break;
                 case GrabedType.LeftEdge:
                 {
@@ -169,23 +166,17 @@ namespace ImageToolWPF
             double power = 1.0;
             power = imgRect.Width / itemSize.Width;
             String drawStr = "Name:" + Name + "(" + _rotatedRect.Center.X.ToString("0.0") + "," +
-                             _rotatedRect.Center.Y.ToString("0.0") + "," +
-                             _rotatedRect.Size.Width.ToString("0.0") + "," +
-                             _rotatedRect.Size.Height.ToString("0.0") + "," +
-                             _rotatedRect.Angle.ToString("0.0") + ")";
+                             _rotatedRect.Center.Y.ToString("0.0") + "," + _rotatedRect.Size.Width.ToString("0.0") +
+                             "," + _rotatedRect.Size.Height.ToString("0.0") + "," + _rotatedRect.Angle.ToString("0.0") +
+                             ")";
             var textScale = 50.0 * power;
-            FormattedText formattedText = new FormattedText(
-                drawStr,
-                CultureInfo.GetCultureInfo("zh-cn"),
-                FlowDirection.LeftToRight,
-                new Typeface("Verdana"),
-          Math.Floor(textScale < 1 ? 1 : textScale),
+            FormattedText formattedText = new FormattedText(drawStr, CultureInfo.GetCultureInfo("zh-cn"),
+                FlowDirection.LeftToRight, new Typeface("Verdana"), Math.Floor(textScale < 1 ? 1 : textScale),
                 DrawPen.Brush);
-
             formattedText.SetFontFamily("Microsoft YaHei UI");
             var textTrans = new RotateTransform(_rotatedRect.Angle, polySharpPnts[1].X, polySharpPnts[1].Y);
             painter.PushTransform(textTrans);
-            
+
             //formattedText.SetForegroundBrush(DrawBrush);
             painter.DrawText(formattedText, polySharpPnts[1]);
             painter.Pop();
@@ -204,16 +195,18 @@ namespace ImageToolWPF
             ConerTopRight,
             ConerBottomRight
         }
-        
-        private GrabedType GetGrabType(System.Windows.Point mouse, System.Windows.Rect imgRect, System.Windows.Size itemSize)
+
+        private GrabedType GetGrabType(System.Windows.Point mouse, System.Windows.Rect imgRect,
+            System.Windows.Size itemSize)
         {
             var polySrcPnts = _rotatedRect.Points();
             List<System.Windows.Point> polySharpPnt = new List<System.Windows.Point>();
             foreach (var srcPnt in polySrcPnts)
             {
-                polySharpPnt.Add(new Point(srcPnt.X,srcPnt.Y));
+                polySharpPnt.Add(new Point(srcPnt.X, srcPnt.Y));
             }
-            for (int i = 0;i < polySharpPnt.Count;i++)
+
+            for (int i = 0; i < polySharpPnt.Count; i++)
             {
                 polySharpPnt[i] = MapToPaint(polySharpPnt[i], imgRect, itemSize);
                 polySrcPnts[i].X = Convert.ToSingle(polySharpPnt[i].X);
@@ -231,35 +224,41 @@ namespace ImageToolWPF
                         case 3:
                             return GrabedType.ConerBottomRight;
                     }
-
                 }
             }
-            if (GetDistance(mouse, polySharpPnt[0],polySharpPnt[1]) < _grabThreshold)
+
+            if (GetDistance(mouse, polySharpPnt[0], polySharpPnt[1]) < _grabThreshold)
             {
                 return GrabedType.LeftEdge;
             }
-            if (GetDistance(mouse, polySharpPnt[1],polySharpPnt[2]) < _grabThreshold)
+
+            if (GetDistance(mouse, polySharpPnt[1], polySharpPnt[2]) < _grabThreshold)
             {
                 var dist = GetDistance(mouse, polySharpPnt[1], polySharpPnt[2]);
                 return GrabedType.TopEdge;
             }
-            if (GetDistance(mouse, polySharpPnt[2],polySharpPnt[3]) < _grabThreshold)
+
+            if (GetDistance(mouse, polySharpPnt[2], polySharpPnt[3]) < _grabThreshold)
             {
                 return GrabedType.RightEdge;
             }
-            if (GetDistance(mouse, polySharpPnt[3],polySharpPnt[0]) < _grabThreshold)
+
+            if (GetDistance(mouse, polySharpPnt[3], polySharpPnt[0]) < _grabThreshold)
             {
                 return GrabedType.BottomEdge;
             }
-            
-            if (Cv2.PointPolygonTest(polySrcPnts, new Point2f(Convert.ToSingle( mouse.X),Convert.ToSingle( mouse.Y)), false) >= 0)
+
+            if (Cv2.PointPolygonTest(polySrcPnts, new Point2f(Convert.ToSingle(mouse.X), Convert.ToSingle(mouse.Y)),
+                false) >= 0)
             {
                 return GrabedType.Center;
             }
+
             return GrabedType.None;
         }
 
-        private Tuple<float, float, float> CalcRectMoveVec(int pntIdx1,int pntIdx2,Point mouse, Rect imgRect, Size itemSize)
+        private Tuple<float, float, float> CalcRectMoveVec(int pntIdx1, int pntIdx2, Point mouse, Rect imgRect,
+            Size itemSize)
         {
             var sourceStart = MapToSource(_mouseStart, imgRect, itemSize);
             var sourceEnd = MapToSource(mouse, imgRect, itemSize);
@@ -269,18 +268,18 @@ namespace ImageToolWPF
             lineCenter.X /= 2;
             lineCenter.Y /= 2;
             var moveVecTmp = lineCenter - _rotatedRect.Center;
-            var moveVec = new Vector(moveVecTmp.X,moveVecTmp.Y) ;
+            var moveVec = new Vector(moveVecTmp.X, moveVecTmp.Y);
             var moveMod = Math.Sqrt(moveVec.X * moveVec.X + moveVec.Y * moveVec.Y);
             double mouseMod = Math.Sqrt(mouseVec.X * mouseVec.X + mouseVec.Y * mouseVec.Y);
             var angle = Math.Abs(GetAnglePI(moveVec, mouseVec));
-
             var moveDstMod = Math.Cos(angle) * mouseMod;
-
             var singleVec = moveVec / moveMod;
             var leftMoveVec = singleVec * moveDstMod;
             var rectMoveVec = singleVec * (moveDstMod / 2.0);
-            return new Tuple<float, float, float>(Convert.ToSingle( rectMoveVec.X),Convert.ToSingle(  rectMoveVec.Y),Convert.ToSingle( moveDstMod));
+            return new Tuple<float, float, float>(Convert.ToSingle(rectMoveVec.X), Convert.ToSingle(rectMoveVec.Y),
+                Convert.ToSingle(moveDstMod));
         }
+
         internal override void MouseMove(Point mouse, Rect imgRect, Size itemSize)
         {
             switch (grabedType)
@@ -301,12 +300,10 @@ namespace ImageToolWPF
                 case GrabedType.LeftEdge:
                 {
                     var movVec = CalcRectMoveVec(0, 1, mouse, imgRect, itemSize);
-
                     if ((_rotatedRect.Size.Width + movVec.Item3) >= 1.0)
                     {
                         _rotatedRect.Center.X += movVec.Item1;
                         _rotatedRect.Center.Y += movVec.Item2;
-
                         _rotatedRect.Size.Width = (_rotatedRect.Size.Width + Convert.ToSingle(movVec.Item3));
                     }
                     else
@@ -328,7 +325,6 @@ namespace ImageToolWPF
                     {
                         _rotatedRect.Center.X += movVec.Item1;
                         _rotatedRect.Center.Y += movVec.Item2;
-
                         _rotatedRect.Size.Height = (_rotatedRect.Size.Height + Convert.ToSingle(movVec.Item3));
                     }
                     else
@@ -350,7 +346,6 @@ namespace ImageToolWPF
                     {
                         _rotatedRect.Center.X += movVec.Item1;
                         _rotatedRect.Center.Y += movVec.Item2;
-
                         _rotatedRect.Size.Width = (_rotatedRect.Size.Width + Convert.ToSingle(movVec.Item3));
                     }
                     else
@@ -364,7 +359,6 @@ namespace ImageToolWPF
                         _parentDisplayer.ImageShapeDataChangedCallBack(this);
                     }
                 }
-
                     break;
                 case GrabedType.BottomEdge:
                 {
@@ -373,7 +367,6 @@ namespace ImageToolWPF
                     {
                         _rotatedRect.Center.X += movVec.Item1;
                         _rotatedRect.Center.Y += movVec.Item2;
-
                         _rotatedRect.Size.Height = (_rotatedRect.Size.Height + Convert.ToSingle(movVec.Item3));
                     }
                     else
@@ -398,7 +391,6 @@ namespace ImageToolWPF
                     var sourceEnd = MapToSource(mouse, imgRect, itemSize);
                     var startVec = sourceStart - centerSharp;
                     var endVec = sourceEnd - centerSharp;
-
                     double angle = 180.0 * (Math.Atan2(endVec.Y, endVec.X) - Math.Atan2(startVec.Y, startVec.X)) /
                                    Math.PI;
                     _rotatedRect.Angle += Convert.ToSingle(angle);
@@ -411,11 +403,11 @@ namespace ImageToolWPF
                     break;
             }
         }
-        
+
         internal override void HoverMove(Point mouse, Rect imgRect, Size itemSize)
         {
             base.HoverMove(mouse, imgRect, itemSize);
-            grabedType = GetGrabType(mouse,imgRect,itemSize);
+            grabedType = GetGrabType(mouse, imgRect, itemSize);
         }
     }
 }

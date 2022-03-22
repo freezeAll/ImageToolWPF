@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -14,10 +15,12 @@ using Size = System.Windows.Size;
 
 namespace ImageToolWPF
 {
+    [Serializable]
     public class ImageShape
     {
         internal ImageToolDisplayer _parentDisplayer;
         public string Name { get;set;}
+        public string TypeName { get; set; }
 
         internal static double DotProduct(System.Windows.Vector v1, System.Windows.Vector v2)
         {

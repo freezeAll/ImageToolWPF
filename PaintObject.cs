@@ -1,63 +1,77 @@
-﻿using System.Windows.Media;
+﻿using System;
+using System.Windows.Controls;
+using System.Windows.Media;
 using OpenCvSharp;
+
 namespace ImageToolWPF
 {
+    [Serializable]
     public class PaintObject
     {
         public PaintObject()
         {
-            _drawPen = new Pen();
-            _drawPen.Thickness = 1;
-            _drawPen.Brush = new SolidColorBrush(Colors.Tomato);
-            _drawBrush = new SolidColorBrush(Colors.Tomato);
+            _drawPenBrush = Colors.Tomato;
+            _drawPenThickness = 1;
+            _drawBrush = Colors.Tomato;
         }
-        private Pen _drawPen;
-        private Brush _drawBrush;
 
+        private Color _drawBrush;
+        private Color _drawPenBrush;
+        private int _drawPenThickness;
         internal virtual void DrawMat(ref Mat paintMat)
         {
-            
         }
-        internal virtual void Paint(DrawingContext painter,System.Windows.Rect rect,System.Windows.Size itemSize)
+
+        internal virtual void Paint(DrawingContext painter, System.Windows.Rect rect, System.Windows.Size itemSize)
         {
-            
         }
-        public Pen DrawPen
+
+        public int DrawPenThickness
         {
-            get;
-            set;
+            get
+            {
+                return _drawPenThickness;
+            }
+            set
+            {
+                _drawPenThickness = value;
+            }
         }
-        public Brush DrawBrush
+
+        protected Pen GenDrawPen()
         {
-            get;
-            set;
+            var outPen = new Pen();
+            outPen.Thickness = _drawPenThickness;
+            outPen.Brush = new SolidColorBrush(_drawPenBrush);
+            return outPen;
+        }
+
+        protected Brush GenDrawBrush()
+        {
+            return new SolidColorBrush(DrawBrush);
+        }
+
+        public Color DrawBrush {
+            get
+            {
+                return _drawBrush;
+            }
+            set
+            {
+                _drawBrush = value;
+            }
         }
 
         public Color DrawPenColor
         {
             get
             {
-                var penBrush = DrawPen.Brush as SolidColorBrush;
-                return penBrush.Color;
+                return _drawPenBrush;
             }
             set
             {
-                DrawPen.Brush = new SolidColorBrush(value);
+                _drawPenBrush = value;
             }
         }
-        
-        public Color DrawBrushColor
-        {
-            get
-            {
-                var brush = DrawBrush as SolidColorBrush;
-                return brush.Color;
-            }
-            set
-            {
-                _drawBrush = new SolidColorBrush(value);
-            }
-        }
-        
     }
 }
