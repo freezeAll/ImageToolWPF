@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -123,24 +124,43 @@ namespace ImageToolWPF
                 var old = e.OldValue as ObservableCollection<ImageShape>;
                 if (old != null)
                 {
-                    old.CollectionChanged -= ImageShapesProperty_CollectionChanged;
+                    old.CollectionChanged -= obj.ImageShapesProperty_CollectionChanged;
                 }
                 if(e.NewValue != null)
                 {
                     (e.NewValue as ObservableCollection<ImageShape>).CollectionChanged +=
-                    ImageShapesProperty_CollectionChanged;
-                    
+                    obj.ImageShapesProperty_CollectionChanged;
                 }
                 
                 obj.InvalidateVisual();
             }
         }
         
-        static void ImageShapesProperty_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+         void ImageShapesProperty_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            var action = e.Action;
+            if (e.NewItems != null)
+            {
+                foreach (object item in e.NewItems)
+                {
+                    if ((item as ImageShape)._parentDisplayer == null)
+                    {
+                        (item as ImageShape)._parentDisplayer = this;
+                    }
+                }
+            }
+ 
+            if (e.OldItems != null)
+            {
+                foreach (object item in e.OldItems)
+                {
+                    if ((item as ImageShape)._parentDisplayer == null)
+                    {
+                        (item as ImageShape)._parentDisplayer = this;
+                    }
+                }
+            }
+            InvalidateVisual();
         }
-        
 
         //private ObservableCollection<ImageShape> Shapes;
 
