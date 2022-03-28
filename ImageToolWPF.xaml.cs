@@ -59,7 +59,7 @@ namespace ImageToolWPF
 
         public static readonly DependencyProperty CvMatShowImageProperty = DependencyProperty.Register("CvMatShowImage",
             typeof(Mat), typeof(ImageToolDisplayer),
-            new PropertyMetadata(null, CvMatShowImagePropertyChangedCallback, null));
+            new PropertyMetadata(new Mat(), CvMatShowImagePropertyChangedCallback, null));
 
         public static readonly DependencyProperty PaintDataProperty = DependencyProperty.Register("PaintData",
             typeof(ImageToolPaintData), typeof(ImageToolDisplayer),
@@ -70,15 +70,28 @@ namespace ImageToolWPF
         {
             var obj = d as ImageToolDisplayer;
             if (obj != null)
-                obj.CvMatShowImage = e.NewValue as Mat;
+            {
+                if (e.OldValue != null)
+                {
+                    var img = e.OldValue as Mat;
+                }
+
+                if (e.NewValue != null)
+                {
+                    var img = e.NewValue as Mat;
+                    obj.SetShowImage(img);
+                }
+            }
         }
 
         private static void PaintDataPropertyChangedCallback(DependencyObject d,
             DependencyPropertyChangedEventArgs e)
         {
+            /*
             var obj = d as ImageToolDisplayer;
             if (obj != null)
                 obj.PaintData = e.NewValue as ImageToolPaintData;
+            */
         }
 
         public Mat CvMatShowImage
@@ -90,8 +103,9 @@ namespace ImageToolWPF
             }
             set
             {
-                SetValue(CvMatShowImageProperty, value);
-                SetShowImage(value);
+                SetValue(CvMatShowImageProperty, value.Clone());
+                
+               
             }
         }
 
@@ -227,8 +241,9 @@ namespace ImageToolWPF
             {
                 var bm = new BitmapImage();
                 bm.BeginInit();
-                bm.StreamSource = new MemoryStream(matImg.ToBytes(".bmp"));
+                bm.StreamSource = new MemoryStream(matImg.ToBytes(".bmp")); ;
                 bm.EndInit();
+
                 _sourceImage = bm;
                 if(_displayArea.Width < 5 || _displayArea.Height < 5)
                 {
@@ -303,10 +318,13 @@ namespace ImageToolWPF
             }
             else
             {
-                foreach (var shape in ImageShapes)
+                if(ImageShapes!=null)
                 {
-                    shape.HoverMove(pos, _displayArea,
-                        new System.Windows.Size(_sourceImage.Width, _sourceImage.Height));
+                    foreach (var shape in ImageShapes)
+                    {
+                        shape.HoverMove(pos, _displayArea,
+                            new System.Windows.Size(_sourceImage.Width, _sourceImage.Height));
+                    }
                 }
 
                 InvalidateVisual();
@@ -450,14 +468,19 @@ namespace ImageToolWPF
 
             drawingContext.DrawImage(_sourceImage, _displayArea);
             var itemSize = new System.Windows.Size(_sourceImage.Width, _sourceImage.Height);
-            foreach (var shape in ImageShapes)
+            if(ImageShapes != null)
             {
-                shape.Paint(drawingContext, _displayArea, itemSize);
+                foreach (var shape in ImageShapes)
+                {
+                    shape.Paint(drawingContext, _displayArea, itemSize);
+                }
             }
-
-            foreach (var obj in _paintData.PaintObjects)
-            {
-                obj.Paint(drawingContext, _displayArea, itemSize);
+            if (_paintData.PaintObjects != null)
+            {    
+                foreach (var obj in _paintData.PaintObjects)
+                {
+                    obj.Paint(drawingContext, _displayArea, itemSize);
+                }
             }
 
         }
